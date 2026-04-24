@@ -77,41 +77,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Build and push API image
+        run: |
+          docker build -t localhost:5000/api:${{ github.sha }} -t localhost:5000/api:latest ./api
+          docker push localhost:5000/api:${{ github.sha }}
+          docker push localhost:5000/api:latest
 
-      - name: Build and push API image with cache
-        uses: docker/build-push-action@v6
-        with:
-          context: ./api
-          push: true
-          tags: |
-            localhost:5000/api:${{ github.sha }}
-            localhost:5000/api:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build and push worker image
+        run: |
+          docker build -t localhost:5000/worker:${{ github.sha }} -t localhost:5000/worker:latest ./worker
+          docker push localhost:5000/worker:${{ github.sha }}
+          docker push localhost:5000/worker:latest
 
-      - name: Build and push worker image with cache
-        uses: docker/build-push-action@v6
-        with:
-          context: ./worker
-          push: true
-          tags: |
-            localhost:5000/worker:${{ github.sha }}
-            localhost:5000/worker:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push frontend image with cache
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          push: true
-          tags: |
-            localhost:5000/frontend:${{ github.sha }}
-            localhost:5000/frontend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build and push frontend image
+        run: |
+          docker build -t localhost:5000/frontend:${{ github.sha }} -t localhost:5000/frontend:latest ./frontend
+          docker push localhost:5000/frontend:${{ github.sha }}
+          docker push localhost:5000/frontend:latest
 
   security-scan:
     runs-on: ubuntu-latest
