@@ -74,4 +74,4 @@ def test_get_existing_job_returns_status():
 def test_get_missing_job_returns_404():
     response = client.get("/jobs/not-real")
 
-    assert response.status_code == 404
+    assert response.status_code == 404 
