@@ -6,10 +6,10 @@ on:
       - "*"
 
 env:
-  REGISTRY: localhost:5000
-  API_IMAGE: localhost:5000/api
-  WORKER_IMAGE: localhost:5000/worker
-  FRONTEND_IMAGE: localhost:5000/frontend
+  REGISTRY: docker.io
+  API_IMAGE: ${{ secrets.DOCKER_USERNAME }}/api
+  WORKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/worker
+  FRONTEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/frontend
 
 jobs:
   lint:
@@ -76,98 +76,95 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-         driver-options: |
-           image=moby/buildkit:latest
 
-      - name: Build and push API image with cache
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+         username: ${{ secrets.DOCKER_USERNAME }}
+         password: ${{ secrets.DOCKER_PASSWORD }}
+        
+      - name: Build and push API image
         uses: docker/build-push-action@v6
         with:
           context: ./api
           push: true
           tags: |
-            localhost:5000/api:${{ github.sha }}
-            localhost:5000/api:latest
+            ${{ secrets.DOCKER_USERNAME }}/api:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/api:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Build and push worker image with cache
         uses: docker/build-push-action@v6
         with:
-          context: ./worker
-          push: true
-          tags: |
-            localhost:5000/worker:${{ github.sha }}
-            localhost:5000/worker:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+         context: ./worker
+         push: true
+         tags: |
+          ${{ secrets.DOCKER_USERNAME }}/worker:${{ github.sha }}
+          ${{ secrets.DOCKER_USERNAME }}/worker:latest
+         cache-from: type=gha
+         cache-to: type=gha,mode=max
 
       - name: Build and push frontend image with cache
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
-          push: true
-          tags: |
-            localhost:5000/frontend:${{ github.sha }}
-            localhost:5000/frontend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          
+         context: ./frontend
+         push: true
+         tags: |
+          ${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}
+          ${{ secrets.DOCKER_USERNAME }}/frontend:latest
+         cache-from: type=gha
+         cache-to: type=gha,mode=max
+        
   security-scan:
-    runs-on: ubuntu-latest
-    needs: build
+   runs-on: ubuntu-latest
+   needs: build
 
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
+   steps:
+    - uses: actions/checkout@v4
 
-    steps:
-      - uses: actions/checkout@v4
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Rebuild images for scanning
-        run: |
-          docker build -t $API_IMAGE:${{ github.sha }} ./api
-          docker build -t $WORKER_IMAGE:${{ github.sha }} ./worker
-          docker build -t $FRONTEND_IMAGE:${{ github.sha }} ./frontend
+    - name: Run Trivy scan on API image
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.API_IMAGE }}:${{ github.sha }}
+        format: sarif
+        output: trivy-api.sarif
+        severity: CRITICAL
+        exit-code: 1
 
-      - name: Run Trivy scan on API image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.API_IMAGE }}:${{ github.sha }}
-          format: sarif
-          output: trivy-api.sarif
-          severity: CRITICAL
-          exit-code: 1
+    - name: Run Trivy scan on worker image
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.WORKER_IMAGE }}:${{ github.sha }}
+        format: sarif
+        output: trivy-worker.sarif
+        severity: CRITICAL
+        exit-code: 1
 
-      - name: Run Trivy scan on worker image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.WORKER_IMAGE }}:${{ github.sha }}
-          format: sarif
-          output: trivy-worker.sarif
-          severity: CRITICAL
-          exit-code: 1
+    - name: Run Trivy scan on frontend image
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+        format: sarif
+        output: trivy-frontend.sarif
+        severity: CRITICAL
+        exit-code: 1
 
-      - name: Run Trivy scan on frontend image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-          format: sarif
-          output: trivy-frontend.sarif
-          severity: CRITICAL
-          exit-code: 1
-
-      - name: Upload Trivy SARIF reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: trivy-sarif-reports
-          path: |
-            trivy-api.sarif
-            trivy-worker.sarif
-            trivy-frontend.sarif
+    - name: Upload Trivy SARIF reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: trivy-sarif-reports
+        path: |
+          trivy-api.sarif
+          trivy-worker.sarif
+          trivy-frontend.sarif
 
   integration-test:
     runs-on: ubuntu-latest
