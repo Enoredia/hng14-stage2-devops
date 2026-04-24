@@ -79,7 +79,6 @@ jobs:
         with:
          driver-options: |
            image=moby/buildkit:latest
-           network=host
 
       - name: Build and push API image with cache
         uses: docker/build-push-action@v6
