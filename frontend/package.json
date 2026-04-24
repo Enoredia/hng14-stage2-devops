@@ -1,12 +1,17 @@
 {
   "name": "frontend",
   "version": "1.0.0",
+  "description": "Frontend service for the HNG Stage 2 job processing system",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "lint": "eslint app.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "axios": "^1.4.0"
+    "axios": "1.6.8",
+    "express": "4.18.3"
+  },
+  "devDependencies": {
+    "eslint": "8.57.0"
   }
 }

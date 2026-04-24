@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: ./api
+    container_name: api
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      JOB_QUEUE_NAME: ${JOB_QUEUE_NAME}
+    ports:
+      - "8000:8000"
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  worker:
+    build: ./worker
+    container_name: worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      JOB_QUEUE_NAME: ${JOB_QUEUE_NAME}
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_URL: ${API_URL}
+      PORT: ${FRONTEND_PORT}
+    ports:
+      - "3000:3000"
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+
+networks:
+    app-network:
+      driver: bridge
+
+
+
+
