@@ -5,3 +5,9 @@ node_modules/
 .coverage
 htmlcov/
 .pytest_cache/
+api/venv/
+worker/venv/
+frontend/node_modules/
+*.pyc
+.coverage.xml
+htmlcov/
