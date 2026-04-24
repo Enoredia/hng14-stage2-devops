@@ -226,7 +226,6 @@ jobs:
           docker compose down -v
 
       - name: Run integration test script
-        :wq
         run: ./tests/integration.sh
 
   deploy:
