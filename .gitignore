@@ -11,3 +11,6 @@ frontend/node_modules/
 *.pyc
 .coverage.xml
 htmlcov/
+api/.env
+.coverage
+api/.coverage
