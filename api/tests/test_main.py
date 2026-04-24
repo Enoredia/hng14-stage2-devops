@@ -36,7 +36,7 @@ class MockRedis:
     def lpush(self, queue_name, value):
         self.queues.append((queue_name, value))
         return len(self.queues)
-        
+
 
 def setup_function():
     main.r = MockRedis()
