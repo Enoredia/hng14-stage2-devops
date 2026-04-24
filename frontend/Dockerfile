@@ -1,23 +1,26 @@
-FROM node:18-alpine
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files first
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --only=production
+RUN npm ci --omit=dev
 
-# Copy app
+FROM node:18-alpine AS runtime
+
+WORKDIR /app
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+COPY --from=builder /app/node_modules ./node_modules
 COPY . .
 
-# Create non-root user
-RUN addgroup appgroup && adduser -S appuser -G appgroup
+RUN chown -R appuser:appgroup /app
+
 USER appuser
 
 EXPOSE 3000
 
-# Healthcheck
-HEALTHCHECK CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
 CMD ["npm", "start"]

@@ -4,6 +4,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
+    restart: unless-stopped
     networks:
       - app-network
     healthcheck:
@@ -11,10 +12,13 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    mem_limit: 128m
+    cpus: "0.25"
 
   api:
     build: ./api
     container_name: api
+    restart: unless-stopped
     depends_on:
       redis:
         condition: service_healthy
@@ -23,18 +27,21 @@ services:
       REDIS_PORT: ${REDIS_PORT}
       JOB_QUEUE_NAME: ${JOB_QUEUE_NAME}
     ports:
-      - "8000:8000"
+      - "${API_PORT}:8000"
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: 256M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 256m
+    cpus: "0.50"
 
   worker:
     build: ./worker
     container_name: worker
+    restart: unless-stopped
     depends_on:
       redis:
         condition: service_healthy
@@ -42,17 +49,16 @@ services:
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
       JOB_QUEUE_NAME: ${JOB_QUEUE_NAME}
+      WORKER_HEALTH_KEY: ${WORKER_HEALTH_KEY}
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: 256M
+    mem_limit: 256m
+    cpus: "0.50"
 
   frontend:
     build: ./frontend
     container_name: frontend
+    restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
@@ -60,20 +66,12 @@ services:
       API_URL: ${API_URL}
       PORT: ${FRONTEND_PORT}
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT}:3000"
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: 256M
-
+    mem_limit: 256m
+    cpus: "0.50"
 
 networks:
-    app-network:
-      driver: bridge
-
-
-
-
+  app-network:
+    driver: bridge

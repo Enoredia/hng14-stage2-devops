@@ -51,7 +51,6 @@ def test_health_returns_healthy():
 
 def test_create_job_returns_job_id_and_queued_status():
     response = client.post("/jobs")
-
     data = response.json()
 
     assert response.status_code == 200
